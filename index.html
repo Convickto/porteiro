@@ -2,17 +2,73 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Verificando localização...</title>
+  <title>Porteiro Virtual</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
-    #map { height: 400px; width: 100%; margin-top: 10px; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f4f6f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      text-align: center;
+    }
+    header {
+      background: #007bff;
+      color: white;
+      padding: 15px;
+      width: 100%;
+      font-size: 1.2rem;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #status {
+      margin: 15px;
+      padding: 15px;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 0.95rem;
+    }
+    #status p {
+      margin: 8px 0;
+    }
+    #status .ok {
+      color: #28a745;
+      font-weight: bold;
+    }
+    #status .erro {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    #map {
+      height: 300px;
+      width: 90%;
+      max-width: 500px;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    footer {
+      font-size: 0.8rem;
+      color: #666;
+      padding: 10px;
+    }
   </style>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-  <h2>Verificação de localização</h2>
+  <header>Porteiro Virtual</header>
   <div id="status">Obtendo sua posição...</div>
   <div id="map"></div>
+  <footer>&copy; 2025 - Sistema de Porteiro Virtual</footer>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -23,9 +79,9 @@
       // Inicializa o mapa
       const map = L.map('map').setView([homeLat, homeLon], 18);
 
-      // Camada do mapa (OpenStreetMap gratuito)
+      // Camada do mapa
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
       // Marcador do portão
@@ -43,7 +99,7 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(success, error);
       } else {
-        document.getElementById("status").innerText = "Seu dispositivo não suporta geolocalização.";
+        document.getElementById("status").innerHTML = "<p class='erro'>Seu dispositivo não suporta geolocalização.</p>";
       }
 
       function success(position) {
@@ -51,34 +107,33 @@
         const lon = position.coords.longitude;
 
         // Adiciona marcador do visitante
-        const userMarker = L.marker([lat, lon]).addTo(map)
-          .bindPopup("Você está aqui").openPopup();
+        L.marker([lat, lon]).addTo(map).bindPopup("Você").openPopup();
 
-        // Calcula distância
         const distance = getDistanceFromLatLonInM(lat, lon, homeLat, homeLon);
 
-        document.getElementById("status").innerHTML = `
+        let html = `
           <p><b>Sua posição:</b> ${lat.toFixed(6)}, ${lon.toFixed(6)}</p>
           <p><b>Portão:</b> ${homeLat}, ${homeLon}</p>
-          <p><b>Distância:</b> ${distance.toFixed(2)} metros</p>
-          <p><b>Raio permitido:</b> ${raioPermitido} metros</p>
+          <p><b>Distância:</b> ${distance.toFixed(2)} m</p>
+          <p><b>Raio permitido:</b> ${raioPermitido} m</p>
         `;
 
         if (distance <= raioPermitido) {
-          document.getElementById("status").innerHTML += "<p style='color:green'><b>Acesso liberado! Redirecionando...</b></p>";
+          html += "<p class='ok'>✅ Acesso liberado! Redirecionando...</p>";
+          document.getElementById("status").innerHTML = html;
           setTimeout(() => {
             window.location.href = "https://danielcjmelo.wixstudio.com/porteiro";
-          }, 5000); // espera 5 segundos para mostrar no mapa antes de redirecionar
+          }, 4000);
         } else {
-          document.getElementById("status").innerHTML += "<p style='color:red'><b>Você precisa estar em frente ao portão para usar esta campainha.</b></p>";
+          html += "<p class='erro'>❌ Você precisa estar em frente ao portão para usar a campainha.</p>";
+          document.getElementById("status").innerHTML = html;
         }
       }
 
       function error() {
-        document.getElementById("status").innerText = "Não foi possível obter sua localização. Ative o GPS e tente de novo.";
+        document.getElementById("status").innerHTML = "<p class='erro'>Não foi possível obter sua localização. Ative o GPS e tente de novo.</p>";
       }
 
-      // Função distância em metros
       function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
         const R = 6371e3;
         const toRad = x => x * Math.PI / 180;
@@ -94,4 +149,3 @@
   </script>
 </body>
 </html>
-
