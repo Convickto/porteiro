@@ -2,130 +2,127 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Porteiro Virtual</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     body {
+      font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
+      background: #f7f7f7;
       display: flex;
       flex-direction: column;
       height: 100vh;
       text-align: center;
     }
 
-    header {
-      background: #2196F3;
+    h1 {
+      font-size: 6vw;
+      background: #2c3e50;
       color: white;
-      padding: 20px;
-      font-size: 22px;
-      font-weight: bold;
+      padding: 20px 10px;
+      margin: 0;
     }
 
     #map {
-      flex: 1;
+      height: 50vh; /* ocupa metade da tela */
       width: 100%;
-      height: 40vh; /* ocupa quase toda a tela */
     }
 
-    #info {
+    #message {
+      flex: 1;
       padding: 20px;
-      font-size: 20px;
-      background: white;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    }
-
-    .status {
-      margin-top: 15px;
-      font-size: 22px;
-      font-weight: bold;
+      font-size: 5vw;
       color: #333;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
-    button {
-      margin-top: 20px;
-      padding: 15px 25px;
-      font-size: 20px;
-      border: none;
-      border-radius: 10px;
-      background: #4CAF50;
-      color: white;
-      cursor: pointer;
+    #message p {
+      margin: 10px 0;
     }
 
-    button:hover {
-      background: #45a049;
+    footer {
+      height: 40px; /* espaço extra para barra do navegador */
+      background: transparent;
     }
   </style>
 </head>
 <body>
-  <header>🔔 Porteiro Virtual</header>
+  <h1>Porteiro Virtual</h1>
   <div id="map"></div>
-  <div id="info">
-    <div id="coords">Obtendo sua localização...</div>
-    <div class="status" id="statusMsg"></div>
+  <div id="message">
+    <p><strong>Ative sua localização</strong></p>
+    <p>Estamos verificando se você está em frente ao portão...</p>
+    <p id="status"></p>
   </div>
+  <footer></footer>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
+    // Localização do portão
     const gateLat = -23.7498280;
     const gateLng = -46.6989196;
-    const radius = 20; // raio permitido em metros
+    const radius = 20; // RAIO AJUSTADO PARA 20 METROS
 
+    // Inicializa o mapa
     const map = L.map('map').setView([gateLat, gateLng], 18);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
+      maxZoom: 19
     }).addTo(map);
 
-    const gateMarker = L.marker([gateLat, gateLng]).addTo(map)
-      .bindPopup("📍 Portão").openPopup();
+    // Marcador do portão
+    const gateMarker = L.marker([gateLat, gateLng]).addTo(map).bindPopup("Portão").openPopup();
 
+    // Círculo de raio permitido
+    const circle = L.circle([gateLat, gateLng], {
+      color: 'blue',
+      fillColor: '#a0c4ff',
+      fillOpacity: 0.3,
+      radius: radius
+    }).addTo(map);
+
+    // Função para calcular distância
     function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
-      const φ1 = lat1 * Math.PI/180;
-      const φ2 = lat2 * Math.PI/180;
-      const Δφ = (lat2-lat1) * Math.PI/180;
-      const Δλ = (lon2-lon1) * Math.PI/180;
-
-      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const R = 6371000; // raio da Terra em metros
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
       return R * c;
     }
 
+    // Captura localização do usuário
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const userLat = pos.coords.latitude;
-        const userLng = pos.coords.longitude;
+      navigator.geolocation.getCurrentPosition(position => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
 
-        document.getElementById("coords").innerText =
-          `Sua posição: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}`;
+        // Marca usuário no mapa
+        const userMarker = L.marker([userLat, userLng], {color: 'red'}).addTo(map).bindPopup("Você").openPopup();
 
-        const userMarker = L.marker([userLat, userLng]).addTo(map)
-          .bindPopup("📱 Você").openPopup();
-
+        // Calcula distância
         const distance = getDistance(userLat, userLng, gateLat, gateLng);
-        let statusMsg = document.getElementById("statusMsg");
 
+        const status = document.getElementById('status');
         if (distance <= radius) {
-          statusMsg.innerHTML = `✅ Dentro da área (${Math.round(distance)}m). Redirecionando...`;
-          setTimeout(() => {
-            window.location.href = "https://danielcjmelo.wixstudio.com/porteiro";
-          }, 3000);
+          status.innerHTML = `<span style="color:green;">✅ Você está dentro da área permitida (${Math.round(distance)}m)</span>`;
+          // Redireciona automaticamente
+          window.location.href = "https://danielcjmelo.wixstudio.com/porteiro";
         } else {
-          statusMsg.innerHTML = `❌ Fora da área (${Math.round(distance)}m). Acesso negado.`;
+          status.innerHTML = `<span style="color:red;">❌ Você está fora da área permitida (${Math.round(distance)}m)</span>`;
         }
+
       }, () => {
-        document.getElementById("coords").innerText = "Erro ao obter localização.";
+        document.getElementById('status').innerText = "⚠️ Permita o acesso à sua localização para continuar.";
       });
     } else {
-      document.getElementById("coords").innerText = "Geolocalização não suportada.";
+      document.getElementById('status').innerText = "⚠️ Seu dispositivo não suporta geolocalização.";
     }
   </script>
 </body>
