@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Verificando localização...</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map { height: 400px; width: 100%; margin-top: 10px; }
+  </style>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+  <h2>Verificação de localização</h2>
+  <div id="status">Obtendo sua posição...</div>
+  <div id="map"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const homeLat = -23.7498280;
+      const homeLon = -46.6989196;
+      const raioPermitido = 30;
+
+      // Inicializa o mapa
+      const map = L.map('map').setView([homeLat, homeLon], 18);
+
+      // Camada do mapa (OpenStreetMap gratuito)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Marcador do portão
+      const portaoMarker = L.marker([homeLat, homeLon]).addTo(map)
+        .bindPopup("Portão").openPopup();
+
+      // Círculo de raio permitido
+      const circle = L.circle([homeLat, homeLon], {
+        color: "blue",
+        fillColor: "#3f87ff55",
+        fillOpacity: 0.3,
+        radius: raioPermitido
+      }).addTo(map);
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(success, error);
+      } else {
+        document.getElementById("status").innerText = "Seu dispositivo não suporta geolocalização.";
+      }
+
+      function success(position) {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        // Adiciona marcador do visitante
+        const userMarker = L.marker([lat, lon]).addTo(map)
+          .bindPopup("Você está aqui").openPopup();
+
+        // Calcula distância
+        const distance = getDistanceFromLatLonInM(lat, lon, homeLat, homeLon);
+
+        document.getElementById("status").innerHTML = `
+          <p><b>Sua posição:</b> ${lat.toFixed(6)}, ${lon.toFixed(6)}</p>
+          <p><b>Portão:</b> ${homeLat}, ${homeLon}</p>
+          <p><b>Distância:</b> ${distance.toFixed(2)} metros</p>
+          <p><b>Raio permitido:</b> ${raioPermitido} metros</p>
+        `;
+
+        if (distance <= raioPermitido) {
+          document.getElementById("status").innerHTML += "<p style='color:green'><b>Acesso liberado! Redirecionando...</b></p>";
+          setTimeout(() => {
+            window.location.href = "https://danielcjmelo.wixstudio.com/porteiro";
+          }, 5000); // espera 5 segundos para mostrar no mapa antes de redirecionar
+        } else {
+          document.getElementById("status").innerHTML += "<p style='color:red'><b>Você precisa estar em frente ao portão para usar esta campainha.</b></p>";
+        }
+      }
+
+      function error() {
+        document.getElementById("status").innerText = "Não foi possível obter sua localização. Ative o GPS e tente de novo.";
+      }
+
+      // Função distância em metros
+      function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+        const R = 6371e3;
+        const toRad = x => x * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      }
+    });
+  </script>
+</body>
+</html>
+
